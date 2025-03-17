@@ -11,6 +11,7 @@ import Profile from '../screens/Profile';
 import Rules from '../screens/Rules';
 import WelcomeScreen from '../screens/WelcomeScreen';
 import LoadingScreen from '../screens/loadingScreen';
+// import MachineTimer from '../screens/MachineTimer';
 import Icon from 'react-native-vector-icons/Foundation';
 import Icon1 from 'react-native-vector-icons/MaterialCommunityIcons';
 import Icon2 from 'react-native-vector-icons/Octicons';
@@ -118,6 +119,7 @@ const AppNavigator = () => {
         
         {/* Rules screen without bottom tab */}
         <Stack.Screen name="Rules" component={Rules} />
+        {/* <Stack.Screen name="MachineTimer" component={MachineTimer} options={{ headerShown: false }} /> */}
       </Stack.Navigator>
     </NavigationContainer>
   );

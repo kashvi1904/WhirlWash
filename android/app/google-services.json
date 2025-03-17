@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "682597505814",
+    "project_id": "whirlwash-1c6f4",
+    "storage_bucket": "whirlwash-1c6f4.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:682597505814:android:a4409fd330eadfcbf94e37",
+        "android_client_info": {
+          "package_name": "com.whirlwash"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "682597505814-k9eelnecp6bleqb7norbcse0kk5vigmd.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.whirlwash",
+            "certificate_hash": "5e8f16062ea3cd2c4a0d547876baa6f38cabf625"
+          }
+        },
+        {
+          "client_id": "682597505814-q52e7pr6e8o7a8roamkq307otq567h2o.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAaLPblKKGOs0BTO3hsTt6t7uo7xgKtJOM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "682597505814-q52e7pr6e8o7a8roamkq307otq567h2o.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

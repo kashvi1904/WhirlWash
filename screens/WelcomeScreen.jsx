@@ -1,11 +1,63 @@
-import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
-import React from 'react'
+import { Image, StyleSheet, Text, TouchableOpacity, View, Alert } from 'react-native'
+import React, { useEffect } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useNavigation } from '@react-navigation/native'
 import Icon from 'react-native-vector-icons/AntDesign';
+import { GoogleSignin, statusCodes } from "@react-native-google-signin/google-signin";
+import { getAuth, GoogleAuthProvider, signInWithCredential } from '@react-native-firebase/auth';
 
 const WelcomeScreen = () => {
   const navigation = useNavigation();
+  
+  useEffect(() => {
+    // Configure Google Sign-In
+    GoogleSignin.configure({
+      webClientId: '682597505814-q52e7pr6e8o7a8roamkq307otq567h2o.apps.googleusercontent.com',
+      offlineAccess: true,
+      forceCodeForRefreshToken: true,
+    });
+  }, []);
+  
+  const googleLogin = async () => {
+    try {
+      await GoogleSignin.hasPlayServices();
+      const userInfo = await GoogleSignin.signIn();
+      console.log("user info", userInfo);
+
+      const { idToken } = userInfo.data;
+
+      if (!idToken) {
+          throw new Error("Google Sign-In failed: No ID token received.");
+      }
+
+      const auth = getAuth();
+      const googleCredential = GoogleAuthProvider.credential(idToken);
+      await signInWithCredential(auth, googleCredential); // 🔥 Links Google to Firebase Auth
+
+      console.log("✅ User successfully signed in to Firebase Authentication!");
+
+      
+      // Navigate to Main screen after successful login
+      navigation.navigate('Main', { 
+        screen: 'Profile', 
+        params: { userEmail: userInfo.data.user.email} 
+      });
+
+    } catch (error) {
+      if (error.code === statusCodes.SIGN_IN_CANCELLED) {
+        console.log("Sign in cancelled", error);
+      } else if (error.code === statusCodes.IN_PROGRESS) {
+        console.log("Sign in in progress", error);
+      } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+        Alert.alert("Error", "Play services not available");
+        console.log("Play services not available", error);
+      } else {
+        Alert.alert("Error", "Something went wrong with Google Sign-In");
+        console.log("Other error", error);
+      }
+    }
+  };
+  
   return (
     <SafeAreaView style={{ flex: 1, flexDirection: 'column', backgroundColor: 'white', alignItems: 'center', gap: 200, paddingTop: 40 }}>
       
@@ -45,7 +97,7 @@ const WelcomeScreen = () => {
             justifyContent: 'center',  // Center the contents
             alignItems: 'center',  // Vertically align
           }}
-          onPress = {() => navigation.navigate('Main')}
+          onPress={googleLogin}
         >
           <Icon
            name="google"
@@ -71,5 +123,3 @@ const WelcomeScreen = () => {
 }
 
 export default WelcomeScreen;
-
-const styles = StyleSheet.create({});
