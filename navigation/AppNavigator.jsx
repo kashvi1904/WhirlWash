@@ -11,12 +11,20 @@ import Profile from '../screens/Profile';
 import Rules from '../screens/Rules';
 import WelcomeScreen from '../screens/WelcomeScreen';
 import LoadingScreen from '../screens/loadingScreen';
-// import MachineTimer from '../screens/MachineTimer';
+
+import AdminHomePage from '../screens/admin/AdminHomePage';
+import AdminMachinePage from '../screens/admin/AdminMachinePage';
+import AdminLogsPage from '../screens/admin/AdminLogsPage';
+import AdminUsers from '../screens/admin/AdminUsers';
+import AdminProfile from '../screens/admin/AdminProfile';
+
 import Icon from 'react-native-vector-icons/Foundation';
 import Icon1 from 'react-native-vector-icons/MaterialCommunityIcons';
 import Icon2 from 'react-native-vector-icons/Octicons';
 import Icon3 from 'react-native-vector-icons/MaterialIcons';
 import Icon4 from 'react-native-vector-icons/Ionicons';
+
+
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
@@ -98,6 +106,82 @@ const BottomTabNavigator = () => {
   );
 };
 
+const AdminBottomTabNavigator = () => {
+  return (
+    <Tab.Navigator
+      initialRouteName="AdminHomePage"
+      screenOptions={{
+        headerShown: false,
+        tabBarShowLabel: false,
+        tabBarStyle: {
+          height: 80,
+          paddingHorizontal: 5,
+          paddingTop: 20,
+          backgroundColor: "#B03D4E", // Different color for admin
+          borderRadius: 15,
+          position: 'absolute',
+        },
+      }}
+    >
+      <Tab.Screen
+        options={{
+          tabBarIcon: ({ focused }) => (
+            <View style={tabIconStyle(focused)}>
+              <Icon name="home" size={25} color={focused ? '#B03D4E' : 'white'} />
+            </View>
+          ),
+        }}
+        name="AdminHomePage"
+        component={AdminHomePage}
+      />
+      <Tab.Screen
+        options={{
+          tabBarIcon: ({ focused }) => (
+            <View style={tabIconStyle(focused)}>
+              <Icon1 name="washing-machine" size={30} color={focused ? '#B03D4E' : 'white'} />
+            </View>
+          ),
+        }}
+        name="AdminMachines"
+        component={AdminMachinePage}
+      />
+      <Tab.Screen
+        options={{
+          tabBarIcon: ({ focused }) => (
+            <View style={tabIconStyle(focused)}>
+              <Icon2 name="log" size={25} color={focused ? '#B03D4E' : 'white'} />
+            </View>
+          ),
+        }}
+        name="AdminLogsPage"
+        component={AdminLogsPage}
+      />
+      <Tab.Screen
+        options={{
+          tabBarIcon: ({ focused }) => (
+            <View style={tabIconStyle(focused)}>
+              <Icon3 name="people" size={30} color={focused ? '#B03D4E' : 'white'} />
+            </View>
+          ),
+        }}
+        name="AdminUsers"
+        component={AdminUsers}
+      />
+      <Tab.Screen
+        options={{
+          tabBarIcon: ({ focused }) => (
+            <View style={tabIconStyle(focused)}>
+              <Icon4 name="person" size={30} color={focused ? '#B03D4E' : 'white'} />
+            </View>
+          ),
+        }}
+        name="AdminProfilePage"
+        component={AdminProfile}
+      />
+    </Tab.Navigator>
+  );
+};
+
 // Stack Navigator (updated)
 const AppNavigator = () => {
   return (
@@ -116,10 +200,16 @@ const AppNavigator = () => {
           component={BottomTabNavigator} 
           options={{ headerShown: false }}
         />
+
+        {/* Admin Tabs */}
+        <Stack.Screen 
+          name="AdminMain" 
+          component={AdminBottomTabNavigator} 
+          options={{ headerShown: false }}
+        />
         
         {/* Rules screen without bottom tab */}
         <Stack.Screen name="Rules" component={Rules} />
-        {/* <Stack.Screen name="MachineTimer" component={MachineTimer} options={{ headerShown: false }} /> */}
       </Stack.Navigator>
     </NavigationContainer>
   );

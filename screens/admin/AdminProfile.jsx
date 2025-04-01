@@ -5,7 +5,7 @@ import {
   Image,
   StyleSheet,
   TouchableOpacity,
-  ScrollView,
+  SafeAreaView,
   ActivityIndicator,
   Alert,
 } from 'react-native';
@@ -19,9 +19,8 @@ import {
 } from '@react-native-firebase/firestore';
 import {getAuth} from '@react-native-firebase/auth';
 import {GoogleSignin} from '@react-native-google-signin/google-signin';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
-const Profile = ({route, navigation}) => {
+const AdminProfile = ({route, navigation}) => {
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [userEmail, setUserEmail] = useState(route?.params?.userEmail || null);
@@ -37,7 +36,7 @@ const Profile = ({route, navigation}) => {
     }
   }, [userEmail]);
 
-  // ✅ Get the user's email from Firebase Auth or Google Sign-In if missing
+  // Get the admin's email from Firebase Auth or Google Sign-In if missing
   const fetchUserEmail = async () => {
     try {
       let email = null;
@@ -60,26 +59,26 @@ const Profile = ({route, navigation}) => {
       setUserEmail(email);
       fetchUserData(email); // Fetch Firestore data after getting email
     } catch (error) {
-      console.error('Error fetching user email:', error);
-      Alert.alert('Error', 'Failed to retrieve user email.');
+      console.error('Error fetching admin email:', error);
+      Alert.alert('Error', 'Failed to retrieve admin email.');
       setLoading(false);
     }
   };
 
-  // ✅ Fetch user data from Firestore using Modular SDK
+  // Fetch admin data from Firestore using Modular SDK
   const fetchUserData = async email => {
     try {
       setLoading(true);
 
       if (!email) {
-        throw new Error('User email is required to fetch data');
+        throw new Error('Admin email is required to fetch data');
       }
 
-      const q = query(collection(db, 'students'), where('Email', '==', email));
+      const q = query(collection(db, 'admins'), where('email', '==', email));
       const querySnapshot = await getDocs(q);
 
       if (querySnapshot.empty) {
-        Alert.alert('Error', 'User not found in database');
+        Alert.alert('Error', 'Admin not found in database');
         setLoading(false);
         return;
       }
@@ -88,8 +87,8 @@ const Profile = ({route, navigation}) => {
       const userDoc = querySnapshot.docs[0];
       setUserData(userDoc.data());
     } catch (error) {
-      console.error('Error fetching user data:', error);
-      Alert.alert('Error', 'Failed to fetch user data.');
+      console.error('Error fetching admin data:', error);
+      Alert.alert('Error', 'Failed to fetch admin data.');
     } finally {
       setLoading(false);
     }
@@ -100,14 +99,14 @@ const Profile = ({route, navigation}) => {
         const currentUser = auth.currentUser;
 
         if (!currentUser) {
-            console.warn("No user currently signed in.");
-            Alert.alert("Logout", "No user is currently signed in.");
+            console.warn("No admin currently signed in.");
+            Alert.alert("Logout", "No admin is currently signed in.");
             return;
         }
 
         await auth.signOut(); // Firebase Auth Logout
         await GoogleSignin.signOut(); // Google Sign-In Logout
-2
+
         // Reset navigation stack to prevent going back after logout
         navigation.reset({
             index: 0,
@@ -118,14 +117,13 @@ const Profile = ({route, navigation}) => {
         console.error("Logout error:", error);
         Alert.alert("Error", "Failed to log out");
     }
-};
-
+  };
 
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#3D4EB0" />
-        <Text style={styles.loadingText}>Loading profile...</Text>
+        <ActivityIndicator size="large" color="#B03D4E" />
+        <Text style={styles.loadingText}>Loading admin profile...</Text>
       </View>
     );
   }
@@ -133,7 +131,7 @@ const Profile = ({route, navigation}) => {
   if (!userData) {
     return (
       <View style={styles.loadingContainer}>
-        <Text style={styles.errorText}>User data not found</Text>
+        <Text style={styles.errorText}>Admin data not found</Text>
         <TouchableOpacity style={styles.retryButton} onPress={fetchUserEmail}>
           <Text style={styles.retryText}>Retry</Text>
         </TouchableOpacity>
@@ -142,28 +140,31 @@ const Profile = ({route, navigation}) => {
   }
 
   return (
+    
     <SafeAreaView style={styles.container}>
-      <Text style={styles.heading}>Profile</Text>
+      <Text style={styles.heading}>Admin Profile</Text>
 
-      <Image source={require('../assets/user.png')} style={styles.img} />
-      <Text style={styles.name}>{userData.Name}</Text>
+      <Image source={require('../../assets/user.png')} style={styles.img} />
+      <Text style={styles.name}>{userData.name}</Text>
 
       <View style={styles.detailsContainer}>
-        <ProfileDetail label="Roll No." value={userData.RollNo} />
-        <ProfileDetail label="Email" value={userData.Email} />
-        <ProfileDetail label="Mobile No." value={userData.MobileNo} />
-        <ProfileDetail label="Role" value={userData.Role} />
-        <ProfileDetail label="Room No." value={userData.RoomNo} />
+        <ProfileDetail label="Email" value={userData.email} />
+        <ProfileDetail label="Role" value={userData.role} />
+        {userData.department && (
+          <ProfileDetail label="Department" value={userData.department} />
+        )}
+        {userData.contactNo && (
+          <ProfileDetail label="Contact No." value={userData.contactNo} />
+        )}
       </View>
 
       <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-        <Icon name="log-out-outline" size={20} color="#3D4EB0" />
+        <Icon name="log-out-outline" size={20} color="#B03D4E" />
         <Text style={styles.logoutText}>Log Out</Text>
       </TouchableOpacity>
 
       <Text style={styles.note}>
-        *If any of the above values are incorrect, contact the admin (caretaker)
-        for updates.
+        *For any system issues or updates to your profile, please contact the IT department.
       </Text>
     </SafeAreaView>
   );
@@ -177,7 +178,7 @@ const ProfileDetail = ({label, value}) => (
 );
 
 const styles = StyleSheet.create({
-  container: {flex: 1, backgroundColor: 'white', padding: 20},
+  container: {flex: 1, backgroundColor: 'white', padding: 20, paddingTop: 60,},
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -189,7 +190,7 @@ const styles = StyleSheet.create({
   retryButton: {
     paddingVertical: 10,
     paddingHorizontal: 20,
-    backgroundColor: '#3D4EB0',
+    backgroundColor: '#B03D4E', // Admin color theme
     borderRadius: 8,
   },
   retryText: {color: 'white', fontSize: 16, fontWeight: '600'},
@@ -198,6 +199,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     textAlign: 'center',
     marginBottom: 10,
+    color: '#B03D4E', // Admin color theme
   },
   img: {width: 100, height: 100, alignSelf: 'center', marginBottom: 10},
   name: {
@@ -210,7 +212,7 @@ const styles = StyleSheet.create({
   detailItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    backgroundColor: '#f0f0f0',
+    backgroundColor: '#f8f0f1', // Lighter version of admin theme
     padding: 15,
     borderRadius: 10,
     marginBottom: 10,
@@ -223,7 +225,7 @@ const styles = StyleSheet.create({
     width: '85%',
     borderRadius: 10,
     borderWidth: 2,
-    borderColor: 'black',
+    borderColor: '#B03D4E', // Admin color theme
     justifyContent: 'center',
     alignItems: 'center',
     flexDirection: 'row',
@@ -231,7 +233,7 @@ const styles = StyleSheet.create({
     marginTop: 50,
     alignSelf: 'center',
   },
-  logoutText: {color: 'grey', fontSize: 20, fontWeight: '700'},
+  logoutText: {color: '#B03D4E', fontSize: 20, fontWeight: '700'}, // Admin color theme
   note: {
     fontSize: 12,
     color: '#888',
@@ -241,4 +243,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default Profile;
+export default AdminProfile;

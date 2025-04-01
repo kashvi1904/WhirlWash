@@ -1,586 +1,845 @@
-// import React, { useState, useEffect } from 'react';
-// import {
-//   View,
-//   Text,
-//   StyleSheet,
-//   ScrollView,
-//   ActivityIndicator,
-//   Alert,
-//   TouchableOpacity,
-//   Image,
-// } from 'react-native';
-// import firestore from '@react-native-firebase/firestore';
+// import React from 'react';
+// import { ScrollView, StyleSheet, Alert } from 'react-native';
 // import auth from '@react-native-firebase/auth';
 
+// // Custom hooks
+// import useMachines from '../hooks/useMachines';
+// import useUserStatus from '../hooks/useUserStatus';
+// import useElectricityStatus from '../hooks/useElectricityStatus';
+
+// // Components
+// import MachineGrid from '../components/machines/MachineGrid';
+// import ElectricityShortageAlert from '../components/machines/ElectricityShortageAlert';
+// import RestrictionAlert from '../components/machines/RestrictionAlert';
+// import PageHeader from '../components/common/PageHeader';
+// import LoadingIndicator from '../components/common/LoadingIndicator';
+
+// // Services
+// import machineService from '../services/machineService';
+// import userService from '../services/userService';
+
+// // Utils
+// import { getTimeRemaining } from '../utils/timeUtils';
+
 // const MachinePage = () => {
-//   const [availableMachines, setAvailableMachines] = useState([]);
-//   const [bookedMachines, setBookedMachines] = useState([]);
-//   const [loading, setLoading] = useState(true);
 //   const currentUser = auth().currentUser;
-
-//   useEffect(() => {
-//     // Set up real-time listener for machine collection
-//     const unsubscribe = firestore()
-//       .collection('machines')
-//       .onSnapshot(
-//         snapshot => {
-//           const available = [];
-//           const booked = [];
-
-//           snapshot.forEach(doc => {
-//             const data = doc.data();
-//             if (data.inUse === false && data.underMaintenance !== true) {
-//               available.push({ id: doc.id, ...data });
-//             } else if (data.inUse === true) {
-//               booked.push({ id: doc.id, ...data });
-//             }
-//           });
-
-//           setAvailableMachines(available);
-//           setBookedMachines(booked);
-//           setLoading(false);
-//         },
-//         error => {
-//           console.error('Error listening to machines collection:', error);
-//           Alert.alert('Error', 'Failed to load machine data.');
-//           setLoading(false);
-//         }
-//       );
-
-//     // Clean up the listener when component unmounts
-//     return () => unsubscribe();
-//   }, []);
+  
+//   // Get machine data using custom hook
+//   const { 
+//     availableMachines, 
+//     bookedMachines,
+//     pendingOTPMachines,
+//     maintenanceMachines, 
+//     loading,
+//     userHasBooking,
+//     userHasPendingOTP,
+//     refreshMachines
+//   } = useMachines();
+  
+//   // Get user status using custom hook
+//   const {
+//     userCooldownUntil,
+//     penaltyUntil,
+//     restrictionSeconds,
+//     restrictionType,
+//   } = useUserStatus(currentUser?.email);
+  
+//   // Get electricity status using custom hook
+//   const { electricityShortage, electricityShortageStartTime } = useElectricityStatus();
 
 //   const handleBookMachine = async (machine) => {
+//     if (electricityShortage) {
+//       Alert.alert(
+//         'Service Unavailable',
+//         'Machine booking is paused due to electricity shortage.'
+//       );
+//       return;
+//     }
+    
 //     try {
 //       if (!currentUser) {
 //         Alert.alert('Error', 'You must be logged in to book a machine.');
 //         return;
 //       }
 
-//       if (machine.inUse) {
-//         return; // Do nothing if the machine is already booked
+//       if (machine.inUse) return;
+
+//       // Check if user already has a booking or pending OTP
+//       if (userHasBooking || userHasPendingOTP) {
+//         Alert.alert('Error', 'You can only book one machine at a time.');
+//         return;
 //       }
 
-//       const machineRef = firestore().collection('machines').doc(machine.id);
-//       await machineRef.update({
-//         inUse: true,
-//         bookedBy: currentUser.email,
-//         bookingTime: firestore.FieldValue.serverTimestamp(),
-//         status: 'in-use',
-//       });
+//       if (restrictionType === 'cooldown' && restrictionSeconds > 0) {
+//         Alert.alert(
+//           'Booking not allowed',
+//           `You need to wait ${restrictionSeconds} seconds before booking another machine.`
+//         );
+//         return;
+//       }
 
-//       // No need for manual state updates since we have the real-time listener
-//       Alert.alert(`Success! Machine No. ${machine.number} booked!`);
+//       if (restrictionType === 'penalty' && restrictionSeconds > 0) {
+//         Alert.alert(
+//           'Booking restricted',
+//           `You have been penalized for not unbooking a machine. Please wait ${restrictionSeconds} seconds.`
+//         );
+//         return;
+//       }
+
+//       const result = await machineService.bookMachine(machine.id, currentUser.email);
+      
+//       Alert.alert(
+//         'Machine Reserved', 
+//         `Machine No. ${machine.number} reserved! Please bring your laundry and verify OTP ${result.otp} with admin. You have 60 seconds.`
+//       );
+      
+//       refreshMachines();
+      
 //     } catch (error) {
 //       console.error('Error booking machine:', error);
-//       Alert.alert('Error', 'Failed to book machine.', error);
+//       Alert.alert('Error', 'Failed to book machine.');
 //     }
 //   };
 
+//   const handleUnbookMachine = async (machine) => {
+//     if (electricityShortage) {
+//       Alert.alert(
+//         'Service Unavailable',
+//         'Machine unbooking is paused due to electricity shortage.'
+//       );
+//       return;
+//     }
+    
+//     try {
+//       if (!currentUser) {
+//         Alert.alert('Error', 'You must be logged in to unbook a machine.');
+//         return;
+//       }
+
+//       if (machine.bookedBy !== currentUser.email) {
+//         Alert.alert('Error', 'You can only unbook machines that you have booked.');
+//         return;
+//       }
+
+//       await machineService.unbookMachine(machine.id, currentUser.email);
+//       Alert.alert(
+//         'Machine Unbooked',
+//         'You have successfully unbooked the machine. You can book another machine after 30 seconds.'
+//       );
+//       refreshMachines();
+      
+//     } catch (error) {
+//       console.error('Error unbooking machine:', error);
+//       Alert.alert('Error', 'Failed to unbook machine.');
+//     }
+//   };
+
+//   const isUserRestricted = restrictionType !== null && restrictionSeconds > 0;
+
 //   return (
 //     <ScrollView style={styles.container}>
-//       <Text style={styles.heading}>LNMIIT, Jaipur</Text>
-//       <Text style={styles.subheading}>
-//         {availableMachines.length} machines available
-//       </Text>
+//       <PageHeader
+//         title="LNMIIT, Jaipur"
+//         subtitle={`${availableMachines.length} machines available`} 
+//         subtitleColor="green"
+//       />
+
+//       <ElectricityShortageAlert isActive={electricityShortage} />
+//       <RestrictionAlert type={restrictionType} seconds={restrictionSeconds} />
 
 //       {loading ? (
-//         <View style={styles.loaderContainer}>
-//           <ActivityIndicator size="large" color="#3D4EB0" />
-//         </View>
+//         <LoadingIndicator />
 //       ) : (
 //         <>
-//           <Text style={styles.sectionTitle}>Available washing machines</Text>
-//           <View style={styles.grid}>
-//             {availableMachines.length > 0 ? (
-//               availableMachines.map(machine => (
-//                 <MachineCard
-//                   key={machine.id}
-//                   machine={machine}
-//                   onPress={() => handleBookMachine(machine)}
-//                 />
-//               ))
-//             ) : (
-//               <Text style={styles.noMachinesText}>No available machines</Text>
-//             )}
-//           </View>
+//           <MachineGrid
+//             title="Available washing machines"
+//             machines={availableMachines}
+//             onBook={handleBookMachine}
+//             currentUserEmail={currentUser?.email}
+//             isUserRestricted={isUserRestricted}
+//             electricityShortage={electricityShortage}
+//             getTimeRemaining={getTimeRemaining}
+//           />
 
-//           <Text style={styles.sectionTitle}>Booked washing machines</Text>
-//           <View style={styles.grid}>
-//             {bookedMachines.length > 0 ? (
-//               bookedMachines.map(machine => (
-//                 <MachineCard key={machine.id} machine={machine} booked />
-//               ))
-//             ) : (
-//               <Text style={styles.noMachinesText}>No booked machines</Text>
-//             )}
-//           </View>
+//           {pendingOTPMachines.length > 0 && (
+//             <MachineGrid
+//               title="Pending OTP Verification"
+//               machines={pendingOTPMachines}
+//               currentUserEmail={currentUser?.email}
+//               isUserRestricted={isUserRestricted}
+//               electricityShortage={electricityShortage}
+//               getTimeRemaining={getTimeRemaining}
+//               isPendingOTP={true}
+//             />
+//           )}
+
+//           <MachineGrid
+//             title="Booked washing machines"
+//             machines={bookedMachines}
+//             onUnbook={handleUnbookMachine}
+//             currentUserEmail={currentUser?.email}
+//             isUserRestricted={isUserRestricted}
+//             electricityShortage={electricityShortage}
+//             getTimeRemaining={getTimeRemaining}
+//           />
+
+//           <MachineGrid
+//             title="Machines under maintenance"
+//             machines={maintenanceMachines}
+//             currentUserEmail={currentUser?.email}
+//             isUserRestricted={isUserRestricted}
+//             electricityShortage={electricityShortage}
+//             getTimeRemaining={getTimeRemaining}
+//           />
 //         </>
 //       )}
 //     </ScrollView>
 //   );
 // };
 
-// const MachineCard = ({ machine, onPress, booked }) => {
-//   return (
-//     <TouchableOpacity
-//       style={[styles.machineCard, booked && styles.bookedMachine]}
-//       onPress={onPress}
-//       disabled={booked} // Disables press if already booked
-//     >
-//       <Image
-//         source={require('../assets/machine.png')}
-//         style={styles.machineIcon}
-//       />
-//       <Text style={styles.machineText}>No. {machine.number}</Text>
-//     </TouchableOpacity>
-//   );
-// };
-
 // const styles = StyleSheet.create({
-//   container: { flex: 1, backgroundColor: '#F5F5F5', padding: 20 },
-//   heading: {
-//     fontSize: 22,
-//     fontWeight: 'bold',
-//     textAlign: 'center',
-//     marginBottom: 5,
-//   },
-//   subheading: {
-//     fontSize: 14,
-//     color: 'green',
-//     textAlign: 'center',
-//     marginBottom: 20,
-//   },
-//   loaderContainer: {
+//   container: {
 //     flex: 1,
-//     justifyContent: 'center',
-//     alignItems: 'center',
+//     backgroundColor: '#F5F5F5',
 //     padding: 20,
-//   },
-//   sectionTitle: {
-//     fontSize: 18,
-//     fontWeight: 'bold',
-//     marginBottom: 10,
-//   },
-//   grid: {
-//     flexDirection: 'row',
-//     flexWrap: 'wrap',
-//     justifyContent: 'space-between',
-//   },
-//   machineCard: {
-//     width: '45%',
-//     backgroundColor: 'white',
-//     padding: 20,
-//     borderRadius: 10,
-//     alignItems: 'center',
-//     marginBottom: 15,
-//     elevation: 3,
-//   },
-//   bookedMachine: {
-//     backgroundColor: '#ccc', // Greyed out for booked machines
-//   },
-//   machineIcon: {
-//     width: 40,
-//     height: 40,
-//     marginBottom: 10,
-//   },
-//   machineText: {
-//     fontSize: 16,
-//     fontWeight: 'bold',
-//   },
-//   noMachinesText: {
-//     textAlign: 'center',
-//     fontSize: 16,
-//     color: '#999',
-//     marginVertical: 10,
 //   },
 // });
 
 // export default MachinePage;
 
-import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  ActivityIndicator,
-  Alert,
-  TouchableOpacity,
-  Image,
-} from 'react-native';
-import firestore from '@react-native-firebase/firestore';
+// import React, { useEffect } from 'react';
+// import { ScrollView, StyleSheet, Alert } from 'react-native';
+// import auth from '@react-native-firebase/auth';
+
+// // Custom hooks
+// import useMachines from '../hooks/useMachines';
+// import useUserStatus from '../hooks/useUserStatus';
+// import useElectricityStatus from '../hooks/useElectricityStatus';
+
+// // Components
+// import MachineGrid from '../components/machines/MachineGrid';
+// import ElectricityShortageAlert from '../components/machines/ElectricityShortageAlert';
+// import RestrictionAlert from '../components/machines/RestrictionAlert';
+// import PageHeader from '../components/common/PageHeader';
+// import LoadingIndicator from '../components/common/LoadingIndicator';
+
+// // Services
+// import machineService from '../services/machineService';
+// import userService from '../services/userService';
+
+// // Utils
+// import { getTimeRemaining, hasTimeExpired } from '../utils/timeUtils';
+
+// // Keep track of which machines we're handling in expiry checks
+// const checkingMachines = {};
+
+// const MachinePage = () => {
+//   const currentUser = auth().currentUser;
+  
+//   // Get machine data using custom hook
+//   const { 
+//     availableMachines, 
+//     bookedMachines,
+//     pendingOTPMachines,
+//     maintenanceMachines, 
+//     loading,
+//     userHasBooking,
+//     userHasPendingOTP,
+//     refreshMachines
+//   } = useMachines();
+  
+//   // Get user status using custom hook
+//   const {
+//     userCooldownUntil,
+//     penaltyUntil,
+//     restrictionSeconds,
+//     restrictionType,
+//   } = useUserStatus(currentUser?.email);
+  
+//   // Get electricity status using custom hook
+//   const { electricityShortage, electricityShortageStartTime } = useElectricityStatus();
+
+//   // Check and handle auto-unbooking for machines
+//   useEffect(() => {
+//     const checkMachinesExpiry = async () => {
+//       if (!bookedMachines || bookedMachines.length === 0) return;
+
+//       // Check each booked machine
+//       for (const machine of bookedMachines) {
+//         if (
+//           machine.expiryTime && 
+//           hasTimeExpired(machine.expiryTime) && 
+//           machine.bookedBy &&
+//           !checkingMachines[machine.id]  // Prevent multiple simultaneous checks
+//         ) {
+//           try {
+//             // Mark as being checked
+//             checkingMachines[machine.id] = true;
+            
+//             console.log(`Checking expiry for machine ${machine.id}`);
+//             await machineService.autoUnbookMachine(machine.id, machine.bookedBy);
+//             refreshMachines();
+            
+//             // Remove from checking after refreshMachines() completes
+//             setTimeout(() => {
+//               delete checkingMachines[machine.id];
+//             }, 3000);
+//           } catch (error) {
+//             console.error('Error in expiry check:', error);
+//             delete checkingMachines[machine.id];
+//           }
+//         }
+//       }
+//     };
+
+//     // Run the check once on mount and then set up interval
+//     checkMachinesExpiry();
+//     const intervalId = setInterval(checkMachinesExpiry, 10000); // Check every 10 seconds
+
+//     return () => clearInterval(intervalId); 
+//   }, [bookedMachines, refreshMachines]);
+
+//   // Check and handle auto-release for OTP verification
+//   useEffect(() => {
+//     const checkOTPExpiry = async () => {
+//       if (!pendingOTPMachines || pendingOTPMachines.length === 0) return;
+
+//       // Check each machine with pending OTP
+//       for (const machine of pendingOTPMachines) {
+//         if (
+//           machine.otpVerifyExpiryTime && 
+//           hasTimeExpired(machine.otpVerifyExpiryTime) && 
+//           machine.bookedBy &&
+//           !checkingMachines[machine.id]  // Prevent multiple simultaneous checks
+//         ) {
+//           try {
+//             // Mark as being checked
+//             checkingMachines[machine.id] = true;
+            
+//             console.log(`Checking OTP expiry for machine ${machine.id}`);
+//             await machineService.autoReleaseIfOTPNotVerified(machine.id, machine.bookedBy);
+//             refreshMachines();
+            
+//             // Remove from checking after refreshMachines() completes
+//             setTimeout(() => {
+//               delete checkingMachines[machine.id];
+//             }, 3000);
+//           } catch (error) {
+//             console.error('Error in OTP expiry check:', error);
+//             delete checkingMachines[machine.id];
+//           }
+//         }
+//       }
+//     };
+
+//     // Run the check once and then set up interval
+//     checkOTPExpiry();
+//     const intervalId = setInterval(checkOTPExpiry, 10000); // Check every 10 seconds
+
+//     return () => clearInterval(intervalId);
+//   }, [pendingOTPMachines, refreshMachines]);
+
+//   const handleBookMachine = async (machine) => {
+//     if (electricityShortage) {
+//       Alert.alert(
+//         'Service Unavailable',
+//         'Machine booking is paused due to electricity shortage.'
+//       );
+//       return;
+//     }
+    
+//     try {
+//       if (!currentUser) {
+//         Alert.alert('Error', 'You must be logged in to book a machine.');
+//         return;
+//       }
+
+//       if (machine.inUse) return;
+
+//       // Check if user already has a booking or pending OTP
+//       if (userHasBooking || userHasPendingOTP) {
+//         Alert.alert('Error', 'You can only book one machine at a time.');
+//         return;
+//       }
+
+//       if (restrictionType === 'cooldown' && restrictionSeconds > 0) {
+//         Alert.alert(
+//           'Booking not allowed',
+//           `You need to wait ${restrictionSeconds} seconds before booking another machine.`
+//         );
+//         return;
+//       }
+
+//       if (restrictionType === 'penalty' && restrictionSeconds > 0) {
+//         Alert.alert(
+//           'Booking restricted',
+//           `You have been penalized for not unbooking a machine. Please wait ${restrictionSeconds} seconds.`
+//         );
+//         return;
+//       }
+
+//       const result = await machineService.bookMachine(machine.id, currentUser.email);
+      
+//       Alert.alert(
+//         'Machine Reserved', 
+//         `Machine No. ${machine.number} reserved! Please bring your laundry and verify OTP ${result.otp} with admin. You have 60 seconds.`
+//       );
+      
+//       refreshMachines();
+      
+//     } catch (error) {
+//       console.error('Error booking machine:', error);
+//       Alert.alert('Error', 'Failed to book machine.');
+//     }
+//   };
+
+//   const handleUnbookMachine = async (machine) => {
+//     if (electricityShortage) {
+//       Alert.alert(
+//         'Service Unavailable',
+//         'Machine unbooking is paused due to electricity shortage.'
+//       );
+//       return;
+//     }
+    
+//     try {
+//       if (!currentUser) {
+//         Alert.alert('Error', 'You must be logged in to unbook a machine.');
+//         return;
+//       }
+
+//       if (machine.bookedBy !== currentUser.email) {
+//         Alert.alert('Error', 'You can only unbook machines that you have booked.');
+//         return;
+//       }
+
+//       await machineService.unbookMachine(machine.id, currentUser.email);
+//       Alert.alert(
+//         'Machine Unbooked',
+//         'You have successfully unbooked the machine. You can book another machine after 30 seconds.'
+//       );
+//       refreshMachines();
+      
+//     } catch (error) {
+//       console.error('Error unbooking machine:', error);
+//       Alert.alert('Error', 'Failed to unbook machine.');
+//     }
+//   };
+
+//   const isUserRestricted = restrictionType !== null && restrictionSeconds > 0;
+
+//   return (
+//     <ScrollView style={styles.container}>
+//       <PageHeader
+//         title="LNMIIT, Jaipur"
+//         subtitle={`${availableMachines.length} machines available`} 
+//         subtitleColor="green"
+//       />
+
+//       <ElectricityShortageAlert isActive={electricityShortage} />
+//       <RestrictionAlert type={restrictionType} seconds={restrictionSeconds} />
+
+//       {loading ? (
+//         <LoadingIndicator />
+//       ) : (
+//         <>
+//           <MachineGrid
+//             title="Available washing machines"
+//             machines={availableMachines}
+//             onBook={handleBookMachine}
+//             currentUserEmail={currentUser?.email}
+//             isUserRestricted={isUserRestricted}
+//             electricityShortage={electricityShortage}
+//             getTimeRemaining={getTimeRemaining}
+//           />
+
+//           {pendingOTPMachines.length > 0 && (
+//             <MachineGrid
+//               title="Pending OTP Verification"
+//               machines={pendingOTPMachines}
+//               currentUserEmail={currentUser?.email}
+//               isUserRestricted={isUserRestricted}
+//               electricityShortage={electricityShortage}
+//               getTimeRemaining={getTimeRemaining}
+//               isPendingOTP={true}
+//             />
+//           )}
+
+//           <MachineGrid
+//             title="Booked washing machines"
+//             machines={bookedMachines}
+//             onUnbook={handleUnbookMachine}
+//             currentUserEmail={currentUser?.email}
+//             isUserRestricted={isUserRestricted}
+//             electricityShortage={electricityShortage}
+//             getTimeRemaining={getTimeRemaining}
+//           />
+
+//           <MachineGrid
+//             title="Machines under maintenance"
+//             machines={maintenanceMachines}
+//             currentUserEmail={currentUser?.email}
+//             isUserRestricted={isUserRestricted}
+//             electricityShortage={electricityShortage}
+//             getTimeRemaining={getTimeRemaining}
+//           />
+//         </>
+//       )}
+//     </ScrollView>
+//   );
+// };
+
+// const styles = StyleSheet.create({
+//   container: {
+//     flex: 1,
+//     backgroundColor: '#F5F5F5',
+//     padding: 20,
+//   },
+// });
+
+// export default MachinePage;
+
+import React, { useEffect, useState } from 'react';
+import { ScrollView, StyleSheet, Alert } from 'react-native';
 import auth from '@react-native-firebase/auth';
 
+// Custom hooks
+import useMachines from '../hooks/useMachines';
+import useUserStatus from '../hooks/useUserStatus';
+import useElectricityStatus from '../hooks/useElectricityStatus';
+
+// Components
+import MachineGrid from '../components/machines/MachineGrid';
+import ElectricityShortageAlert from '../components/machines/ElectricityShortageAlert';
+import RestrictionAlert from '../components/machines/RestrictionAlert';
+import PageHeader from '../components/common/PageHeader';
+import LoadingIndicator from '../components/common/LoadingIndicator';
+
+// Services
+import machineService from '../services/machineService';
+import userService from '../services/userService';
+
+// Utils
+import { getTimeRemaining, hasTimeExpired } from '../utils/timeUtils';
+
+// Keep track of which machines we're handling in expiry checks
+const checkingMachines = {};
+
 const MachinePage = () => {
-  const [availableMachines, setAvailableMachines] = useState([]);
-  const [bookedMachines, setBookedMachines] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [userHasBooking, setUserHasBooking] = useState(false);
   const currentUser = auth().currentUser;
+  
+  // Local loading state to override the hook's loading state
+  const [isLoading, setIsLoading] = useState(false);
+  
+  // Get machine data using custom hook
+  const { 
+    availableMachines, 
+    bookedMachines,
+    pendingOTPMachines,
+    maintenanceMachines, 
+    loading: hookLoading,
+    userHasBooking,
+    userHasPendingOTP,
+    refreshMachines
+  } = useMachines();
+  
+  // Get user status using custom hook
+  const {
+    userCooldownUntil,
+    penaltyUntil,
+    restrictionSeconds,
+    restrictionType,
+  } = useUserStatus(currentUser?.email);
+  
+  // Get electricity status using custom hook
+  const { electricityShortage, electricityShortageStartTime } = useElectricityStatus();
 
+  // Custom refresh function with timeout
+  const safeRefreshMachines = () => {
+    // Set our local loading state
+    setIsLoading(true);
+    
+    // Call the hook's refresh function
+    refreshMachines();
+    
+    // Reset loading after 2 seconds, regardless of what happens
+    setTimeout(() => {
+      setIsLoading(false);
+    }, 2000);
+  };
+
+  // Check and handle auto-unbooking for machines
   useEffect(() => {
-    // Set up real-time listener for machine collection
-    const unsubscribe = firestore()
-      .collection('machines')
-      .onSnapshot(
-        snapshot => {
-          const available = [];
-          const booked = [];
-          let hasBooking = false;
+    const checkMachinesExpiry = async () => {
+      if (!bookedMachines || bookedMachines.length === 0) return;
 
-          snapshot.forEach(doc => {
-            const data = doc.data();
-            if (data.inUse === false && data.underMaintenance !== true) {
-              available.push({ id: doc.id, ...data });
-            } else if (data.inUse === true) {
-              // Check if current user has a booking
-              if (data.bookedBy === currentUser?.email) {
-                hasBooking = true;
-              }
-              booked.push({ id: doc.id, ...data });
+      // Check each booked machine
+      for (const machine of bookedMachines) {
+        if (
+          machine.expiryTime && 
+          hasTimeExpired(machine.expiryTime) && 
+          machine.bookedBy &&
+          !checkingMachines[machine.id]  // Prevent multiple simultaneous checks
+        ) {
+          try {
+            // Mark as being checked
+            checkingMachines[machine.id] = true;
+            
+            console.log(`Checking expiry for machine ${machine.id}`);
+            const result = await machineService.autoUnbookMachine(machine.id, machine.bookedBy);
+            
+            // Only refresh if an actual change was made
+            if (result === true) {
+              safeRefreshMachines();
             }
-          });
-
-          setAvailableMachines(available);
-          setBookedMachines(booked);
-          setUserHasBooking(hasBooking);
-          setLoading(false);
-        },
-        error => {
-          console.error('Error listening to machines collection:', error);
-          Alert.alert('Error', 'Failed to load machine data.');
-          setLoading(false);
+            
+            // Remove from checking after a delay
+            setTimeout(() => {
+              delete checkingMachines[machine.id];
+            }, 3000);
+          } catch (error) {
+            console.error('Error in expiry check:', error);
+            delete checkingMachines[machine.id];
+          }
         }
-      );
+      }
+    };
 
-    // Clean up the listener when component unmounts
-    return () => unsubscribe();
-  }, [currentUser]);
+    // Run the check once on mount
+    checkMachinesExpiry();
+    
+    // Set up interval with proper cleanup
+    const intervalId = setInterval(checkMachinesExpiry, 1000); // Check every 10 seconds
+    return () => {
+      clearInterval(intervalId);
+      // Clear all checking flags on unmount
+      for (const key in checkingMachines) {
+        delete checkingMachines[key];
+      }
+    };
+  }, [bookedMachines]);
+
+  // Check and handle auto-release for OTP verification
+  useEffect(() => {
+    const checkOTPExpiry = async () => {
+      if (!pendingOTPMachines || pendingOTPMachines.length === 0) return;
+
+      // Check each machine with pending OTP
+      for (const machine of pendingOTPMachines) {
+        if (
+          machine.otpVerifyExpiryTime && 
+          hasTimeExpired(machine.otpVerifyExpiryTime) && 
+          machine.bookedBy &&
+          !checkingMachines[machine.id]  // Prevent multiple simultaneous checks
+        ) {
+          try {
+            // Mark as being checked
+            checkingMachines[machine.id] = true;
+            
+            console.log(`Checking OTP expiry for machine ${machine.id}`);
+            const result = await machineService.autoReleaseIfOTPNotVerified(machine.id, machine.bookedBy);
+            
+            // Only refresh if an actual change was made
+            if (result === true) {
+              safeRefreshMachines();
+            }
+            
+            // Remove from checking after a delay
+            setTimeout(() => {
+              delete checkingMachines[machine.id];
+            }, 3000);
+          } catch (error) {
+            console.error('Error in OTP expiry check:', error);
+            delete checkingMachines[machine.id];
+          }
+        }
+      }
+    };
+
+    // Run the check once
+    checkOTPExpiry();
+    
+    // Set up interval with proper cleanup
+    const intervalId = setInterval(checkOTPExpiry, 10000); // Check every 10 seconds
+    return () => {
+      clearInterval(intervalId);
+      // Clear all checking flags on unmount
+      for (const key in checkingMachines) {
+        delete checkingMachines[key];
+      }
+    };
+  }, [pendingOTPMachines]);
+
+  // Force a refresh on component mount
+  useEffect(() => {
+    // Initial refresh when component mounts
+    safeRefreshMachines();
+  }, []);
 
   const handleBookMachine = async (machine) => {
+    if (electricityShortage) {
+      Alert.alert(
+        'Service Unavailable',
+        'Machine booking is paused due to electricity shortage.'
+      );
+      return;
+    }
+    
     try {
       if (!currentUser) {
         Alert.alert('Error', 'You must be logged in to book a machine.');
         return;
       }
 
-      if (machine.inUse) {
-        return; // Do nothing if the machine is already booked
-      }
+      if (machine.inUse) return;
 
-      // Check if user already has a booking
-      if (userHasBooking) {
+      // Check if user already has a booking or pending OTP
+      if (userHasBooking || userHasPendingOTP) {
         Alert.alert('Error', 'You can only book one machine at a time.');
         return;
       }
 
-      // Fetch user details from students collection
-      const userQuery = await firestore()
-        .collection('students')
-        .where('Email', '==', currentUser.email)
-        .limit(1)
-        .get();
-
-      let userDetails = {};
-      if (!userQuery.empty) {
-        userDetails = userQuery.docs[0].data();
+      if (restrictionType === 'cooldown' && restrictionSeconds > 0) {
+        Alert.alert(
+          'Booking not allowed',
+          `You need to wait ${restrictionSeconds} seconds before booking another machine.`
+        );
+        return;
       }
 
-      // Calculate expiry time (15 seconds from now)
-      const expiryTime = new Date();
-      expiryTime.setSeconds(expiryTime.getSeconds() + 15);
+      if (restrictionType === 'penalty' && restrictionSeconds > 0) {
+        Alert.alert(
+          'Booking restricted',
+          `You have been penalized for not unbooking a machine. Please wait ${restrictionSeconds} seconds.`
+        );
+        return;
+      }
 
-      const machineRef = firestore().collection('machines').doc(machine.id);
-      await machineRef.update({ 
-        inUse: true, 
-        bookedBy: currentUser.email,
-        bookingTime: firestore.FieldValue.serverTimestamp(),
-        status: 'in-use',
-        expiryTime: expiryTime.toISOString(),
-        userName: userDetails.name || '',
-        userMobile: userDetails.MobileNo || '',
-        autoUnbooked: false // Flag to track if auto-unbooked
-      });
-
-      // Set a timer to auto-unbook the machine
-      setTimeout(() => {
-        autoUnbookMachine(machine.id, currentUser.email);
-      }, 15000); // 15 seconds
-
-      Alert.alert(`Success! Machine No. ${machine.number} booked!`);
+      const result = await machineService.bookMachine(machine.id, currentUser.email);
+      
+      Alert.alert(
+        'Machine Reserved', 
+        `Machine No. ${machine.number} reserved! Please bring your laundry and verify OTP ${result.otp} with admin. You have 60 seconds.`
+      );
+      
+      safeRefreshMachines();
+      
     } catch (error) {
       console.error('Error booking machine:', error);
       Alert.alert('Error', 'Failed to book machine.');
     }
   };
 
-  const autoUnbookMachine = async (machineId, userEmail) => {
+  const handleUnbookMachine = async (machine) => {
+    if (electricityShortage) {
+      Alert.alert(
+        'Service Unavailable',
+        'Machine unbooking is paused due to electricity shortage.'
+      );
+      return;
+    }
+    
     try {
-      // Check if the machine is still booked by this user
-      const machineDoc = await firestore().collection('machines').doc(machineId).get();
-      const machineData = machineDoc.data();
+      if (!currentUser) {
+        Alert.alert('Error', 'You must be logged in to unbook a machine.');
+        return;
+      }
+
+      if (machine.bookedBy !== currentUser.email) {
+        Alert.alert('Error', 'You can only unbook machines that you have booked.');
+        return;
+      }
+
+      const result = await machineService.unbookMachine(machine.id, currentUser.email);
       
-      if (!machineData || machineData.bookedBy !== userEmail) {
-        return; // Machine is already unbooked or booked by someone else
+      Alert.alert(
+        'Machine Unbooked',
+        'You have successfully unbooked the machine. You can book another machine after 30 seconds.'
+      );
+      
+      // Only refresh if actual change was made
+      if (result === true) {
+        safeRefreshMachines();
       }
-
-      // Get user details
-      const userQuerySnapshot = await firestore()
-        .collection('students')
-        .where('Email', '==', userEmail)
-        .limit(1)
-        .get();
-
-      if (!userQuerySnapshot.empty) {
-        const userDoc = userQuerySnapshot.docs[0].ref;
-        const userData = userQuerySnapshot.docs[0].data();
-
-        let updatedLastUses = userData.lastUses || ["", "", "", "", ""];
-        const newEntry = new Date().toISOString();
-
-        // Shift array and add new entry
-        updatedLastUses.shift();
-        updatedLastUses.push(newEntry);
-
-        // Update user's lastUses
-        await userDoc.update({
-          lastUses: updatedLastUses,
-        });
-      }
-
-      // Update machine status but keep user info for display
-      // Set the autoUnbooked flag to true
-      await firestore().collection('machines').doc(machineId).update({
-        inUse: false,
-        bookedBy: null,
-        status: 'available',
-        lastUsedBy: userEmail,
-        lastUserName: machineData.userName,
-        lastUserMobile: machineData.userMobile,
-        lastUsedTime: new Date().toISOString(),
-        autoUnbooked: true // Flag to indicate auto-unbook
-      });
-
-      console.log(`Machine ${machineId} auto-unbooked due to timeout`);
+      
     } catch (error) {
-      console.error('Error auto-unbooking machine:', error);
+      console.error('Error unbooking machine:', error);
+      Alert.alert('Error', 'Failed to unbook machine.');
     }
   };
 
-  // Calculate time remaining for a machine
-  const getTimeRemaining = (expiryTimeStr) => {
-    if (!expiryTimeStr) return 0;
-    
-    const expiryTime = new Date(expiryTimeStr);
-    const now = new Date();
-    const diffMs = expiryTime - now;
-    
-    return Math.max(0, Math.floor(diffMs / 1000)); // Return seconds remaining
-  };
+  const isUserRestricted = restrictionType !== null && restrictionSeconds > 0;
 
+  // Determine if we should show loading based on local state or hook state
+  const showLoading = isLoading || (hookLoading && !isLoading);
+
+  // This is the actual render part
   return (
     <ScrollView style={styles.container}>
-      <Text style={styles.heading}>LNMIIT, Jaipur</Text>
-      <Text style={styles.subheading}>
-        {availableMachines.length} machines available
-      </Text>
+      <PageHeader
+        title="LNMIIT, Jaipur"
+        subtitle={`${availableMachines.length} machines available`} 
+        subtitleColor="green"
+      />
 
-      {loading ? (
-        <View style={styles.loaderContainer}>
-          <ActivityIndicator size="large" color="#3D4EB0" />
-        </View>
+      <ElectricityShortageAlert isActive={electricityShortage} />
+      <RestrictionAlert type={restrictionType} seconds={restrictionSeconds} />
+
+      {showLoading ? (
+        <LoadingIndicator />
       ) : (
         <>
-          <Text style={styles.sectionTitle}>Available washing machines</Text>
-          <View style={styles.grid}>
-            {availableMachines.length > 0 ? (
-              availableMachines.map(machine => (
-                <MachineCard
-                  key={machine.id}
-                  machine={machine}
-                  onPress={() => handleBookMachine(machine)}
-                />
-              ))
-            ) : (
-              <Text style={styles.noMachinesText}>No available machines</Text>
-            )}
-          </View>
+          <MachineGrid
+            title="Available washing machines"
+            machines={availableMachines}
+            onBook={handleBookMachine}
+            currentUserEmail={currentUser?.email}
+            isUserRestricted={isUserRestricted}
+            electricityShortage={electricityShortage}
+            getTimeRemaining={getTimeRemaining}
+          />
 
-          <Text style={styles.sectionTitle}>Booked washing machines</Text>
-          <View style={styles.grid}>
-            {bookedMachines.length > 0 ? (
-              bookedMachines.map(machine => (
-                <MachineCard 
-                  key={machine.id} 
-                  machine={machine} 
-                  booked 
-                  getTimeRemaining={getTimeRemaining}
-                />
-              ))
-            ) : (
-              <Text style={styles.noMachinesText}>No booked machines</Text>
-            )}
-          </View>
+          {pendingOTPMachines.length > 0 && (
+            <MachineGrid
+              title="Pending OTP Verification"
+              machines={pendingOTPMachines}
+              currentUserEmail={currentUser?.email}
+              isUserRestricted={isUserRestricted}
+              electricityShortage={electricityShortage}
+              getTimeRemaining={getTimeRemaining}
+              isPendingOTP={true}
+            />
+          )}
+
+          <MachineGrid
+            title="Booked washing machines"
+            machines={bookedMachines}
+            onUnbook={handleUnbookMachine}
+            currentUserEmail={currentUser?.email}
+            isUserRestricted={isUserRestricted}
+            electricityShortage={electricityShortage}
+            getTimeRemaining={getTimeRemaining}
+          />
+
+          <MachineGrid
+            title="Machines under maintenance"
+            machines={maintenanceMachines}
+            currentUserEmail={currentUser?.email}
+            isUserRestricted={isUserRestricted}
+            electricityShortage={electricityShortage}
+            getTimeRemaining={getTimeRemaining}
+          />
         </>
       )}
     </ScrollView>
   );
 };
-const MachineCard = ({ machine, onPress, booked, getTimeRemaining }) => {
-  const [timeRemaining, setTimeRemaining] = useState(0);
-  
-  useEffect(() => {
-    let timer;
-    if (booked && machine.expiryTime) {
-      // Set initial time
-      setTimeRemaining(getTimeRemaining(machine.expiryTime));
-      
-      // Update timer every second
-      timer = setInterval(() => {
-        const remaining = getTimeRemaining(machine.expiryTime);
-        setTimeRemaining(remaining);
-        if (remaining <= 0) {
-          clearInterval(timer);
-        }
-      }, 1000);
-    }
-    
-    return () => {
-      if (timer) clearInterval(timer);
-    };
-  }, [booked, machine.expiryTime, getTimeRemaining]);
-
-  return (
-    <TouchableOpacity
-      style={[styles.machineCard, booked && styles.bookedMachine]}
-      onPress={onPress}
-      disabled={booked} // Disables press if already booked
-    >
-      <Image
-        source={require('../assets/image.png')}
-        style={styles.machineIcon}
-      />
-      <Text style={styles.machineText}>No. {machine.number}</Text>
-      
-      {booked && (
-        <View style={styles.bookedInfo}>
-          {machine.expiryTime && (
-            <Text style={styles.timerText}>
-              {timeRemaining > 0 ? `${timeRemaining}s remaining` : 'Time expired'}
-            </Text>
-          )}
-          <Text style={styles.bookedByText}>
-            In use
-          </Text>
-        </View>
-      )}
-      
-      {/* Only show user details on machines that were auto-unbooked */}
-      {!booked && machine.autoUnbooked === true && (
-        <View style={styles.lastUserInfo}>
-          <Text style={styles.lastUserText}>Last used by:</Text>
-          <Text style={styles.lastUserName}>{machine.lastUserName}</Text>
-          <Text style={styles.lastUserMobile}>{machine.lastUserMobile}</Text>
-        </View>
-      )}
-    </TouchableOpacity>
-  );
-};
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F5F5', padding: 20 },
-  heading: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 5,
-  },
-  subheading: {
-    fontSize: 14,
-    color: 'green',
-    textAlign: 'center',
-    marginBottom: 20,
-  },
-  loaderContainer: {
+  container: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: '#F5F5F5',
     padding: 20,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 10,
-  },
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-  },
-  machineCard: {
-    width: '45%',
-    backgroundColor: 'white',
-    padding: 20,
-    borderRadius: 10,
-    alignItems: 'center',
-    marginBottom: 15,
-    elevation: 3,
-  },
-  bookedMachine: {
-    backgroundColor: '#f0f0f0', // Slightly lighter grey for booked machines
-  },
-  machineIcon: {
-    width: 40,
-    height: 40,
-    marginBottom: 10,
-  },
-  machineText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 5,
-  },
-  noMachinesText: {
-    textAlign: 'center',
-    fontSize: 16,
-    color: '#999',
-    marginVertical: 10,
-  },
-  bookedInfo: {
-    marginTop: 5,
-    alignItems: 'center',
-  },
-  timerText: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#E53935', // Red color for timer
-    marginBottom: 5,
-  },
-  bookedByText: {
-    fontSize: 12,
-    color: '#555',
-  },
-  lastUserInfo: {
-    marginTop: 5,
-    alignItems: 'center',
-    padding: 5,
-    backgroundColor: '#f9f9f9',
-    borderRadius: 5,
-    width: '100%',
-  },
-  lastUserText: {
-    fontSize: 12,
-    color: '#555',
-  },
-  lastUserName: {
-    fontSize: 13,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  lastUserMobile: {
-    fontSize: 12,
-    color: '#666',
   },
 });
 
