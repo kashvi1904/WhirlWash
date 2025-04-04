@@ -10,7 +10,7 @@ import ContactUs from '../screens/ContactUs';
 import Profile from '../screens/Profile';
 import Rules from '../screens/Rules';
 import WelcomeScreen from '../screens/WelcomeScreen';
-import LoadingScreen from '../screens/loadingScreen';
+import LoadingScreen from '../screens/LoadingScreen';
 
 import AdminHomePage from '../screens/admin/AdminHomePage';
 import AdminMachinePage from '../screens/admin/AdminMachinePage';
@@ -23,6 +23,7 @@ import Icon1 from 'react-native-vector-icons/MaterialCommunityIcons';
 import Icon2 from 'react-native-vector-icons/Octicons';
 import Icon3 from 'react-native-vector-icons/MaterialIcons';
 import Icon4 from 'react-native-vector-icons/Ionicons';
+import AdminEntries from '../screens/admin/AdminEntries';
 
 
 
@@ -51,7 +52,7 @@ const BottomTabNavigator = () => {
         options={{
           tabBarIcon: ({ focused }) => (
             <View style={tabIconStyle(focused)}>
-              <Icon name="home" size={25} color={focused ? '#3D4EB0' : 'white'} />
+              <Icon name="home" size={30} color={focused ? '#3D4EB0' : 'white'} />
             </View>
           ),
         }}
@@ -84,7 +85,7 @@ const BottomTabNavigator = () => {
         options={{
           tabBarIcon: ({ focused }) => (
             <View style={tabIconStyle(focused)}>
-              <Icon3 name="contact-phone" size={30} color={focused ? '#3D4EB0' : 'white'} />
+              <Icon3 name="contact-phone" size={32} color={focused ? '#3D4EB0' : 'white'} />
             </View>
           ),
         }}
@@ -127,7 +128,7 @@ const AdminBottomTabNavigator = () => {
         options={{
           tabBarIcon: ({ focused }) => (
             <View style={tabIconStyle(focused)}>
-              <Icon name="home" size={25} color={focused ? '#B03D4E' : 'white'} />
+              <Icon name="home" size={30} color={focused ? '#B03D4E' : 'white'} />
             </View>
           ),
         }}
@@ -160,7 +161,7 @@ const AdminBottomTabNavigator = () => {
         options={{
           tabBarIcon: ({ focused }) => (
             <View style={tabIconStyle(focused)}>
-              <Icon3 name="people" size={30} color={focused ? '#B03D4E' : 'white'} />
+              <Icon3 name="check-circle" size={32} color={focused ? '#B03D4E' : 'white'} />
             </View>
           ),
         }}
@@ -171,12 +172,12 @@ const AdminBottomTabNavigator = () => {
         options={{
           tabBarIcon: ({ focused }) => (
             <View style={tabIconStyle(focused)}>
-              <Icon4 name="person" size={30} color={focused ? '#B03D4E' : 'white'} />
+              <Icon4 name="people" size={32} color={focused ? '#B03D4E' : 'white'} />
             </View>
           ),
         }}
-        name="AdminProfilePage"
-        component={AdminProfile}
+        name="AdminEntries"
+        component={AdminEntries}
       />
     </Tab.Navigator>
   );
@@ -208,7 +209,8 @@ const AppNavigator = () => {
           options={{ headerShown: false }}
         />
         
-        {/* Rules screen without bottom tab */}
+        {/* Rules and AdminProfile screen without bottom tab */}
+        <Stack.Screen name="AdminProfile" component={AdminProfile} />
         <Stack.Screen name="Rules" component={Rules} />
       </Stack.Navigator>
     </NavigationContainer>

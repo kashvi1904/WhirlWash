@@ -1,7 +1,14 @@
-import {Image, StyleSheet, Text, TouchableOpacity, View, ScrollView} from 'react-native';
+import {
+  Image,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  ScrollView,
+} from 'react-native';
 import React, {useState} from 'react';
 import {SafeAreaView} from 'react-native-safe-area-context';
-import Icon from 'react-native-vector-icons/Fontisto';
+import Icon from 'react-native-vector-icons/Ionicons';
 import Icon1 from 'react-native-vector-icons/Ionicons';
 import {useNavigation} from '@react-navigation/native';
 
@@ -14,43 +21,33 @@ const AdminHomePage = () => {
       <View style={styles.header}>
         <Text style={styles.headerText}>Hello, {admin}!</Text>
         <View style={styles.iconContainer}>
-          <TouchableOpacity style={styles.iconButton}>
-            <Icon name="bell" size={24} color="#B03D4E" />
-          </TouchableOpacity>
-
           <TouchableOpacity
             onPress={() => {
-              navigation.navigate('Rules');
+              navigation.navigate('AdminProfile');
             }}
             style={styles.iconButton}>
-            <Icon1
-              name="document-text-outline"
-              size={26}
-              color="#B03D4E"
-            />
+            <Icon name="person" size={24} color="#B03D4E" />
           </TouchableOpacity>
         </View>
       </View>
 
-      <ScrollView 
+      <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}>
-        
         <Image
           source={require('../../assets/LNMIIT.png')}
           style={styles.mainImage}
         />
 
         <View style={styles.infoContainer}>
-          <Text style={styles.infoTitle}>
-            Welcome to WhirlWash!
-          </Text>
+          <Text style={styles.infoTitle}>Welcome to WhirlWash!</Text>
+          <Text></Text>
           <Text style={styles.infoText}>
             "Laundry made simple. Book machines instantly, verify with OTP, and
             track your wash cycle—all from your phone. No waiting, no paperwork,
             just clean clothes effortlessly. Our app eliminates queues, sends
-            timely notifications, and ensures fair machine allocation. Manage your
-            laundry schedule efficiently around your busy day with our
+            timely notifications, and ensures fair machine allocation. Manage
+            your laundry schedule efficiently around your busy day with our
             user-friendly interface."
           </Text>
         </View>
@@ -62,9 +59,7 @@ const AdminHomePage = () => {
             source={require('../../assets/redMachine.png')}
             style={styles.buttonIcon}
           />
-          <Text style={styles.buttonText}>
-            View Machines
-          </Text>
+          <Text style={styles.buttonText}>View Machines</Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
@@ -75,9 +70,9 @@ export default AdminHomePage;
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: 'white', 
-    width: '100%', 
-    height: '100%'
+    backgroundColor: 'white',
+    width: '100%',
+    height: '100%',
   },
   header: {
     flexDirection: 'row',
@@ -86,12 +81,12 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   headerText: {
-    fontSize: 24, 
-    fontWeight: '600'
+    fontSize: 24,
+    fontWeight: '600',
   },
   iconContainer: {
-    flexDirection: 'row', 
-    gap: 10
+    flexDirection: 'row',
+    gap: 10,
   },
   iconButton: {
     backgroundColor: '#F8E9EC',
@@ -102,7 +97,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   scrollContent: {
-    paddingBottom: 30
+    paddingBottom: 30,
   },
   mainImage: {
     width: '85%',
@@ -121,14 +116,15 @@ const styles = StyleSheet.create({
     padding: 10,
   },
   infoTitle: {
-    fontSize: 30, 
-    fontWeight: '400', 
-    color: '#B03D4E'
+    fontSize: 25,
+    fontWeight: '400',
+    color: '#B03D4E',
+    marginBottom: 15,
   },
   infoText: {
-    fontSize: 16, 
-    lineHeight: 22, 
-    marginTop: 5
+    fontSize: 16,
+    lineHeight: 22,
+    marginTop: 5,
   },
   actionButton: {
     backgroundColor: '#F5F5F5',
@@ -145,12 +141,12 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   buttonIcon: {
-    width: 30, 
-    height: 30
+    width: 30,
+    height: 30,
   },
   buttonText: {
     color: 'grey',
     fontSize: 20,
     fontWeight: '600',
-  }
+  },
 });
