@@ -1,4 +1,5 @@
-import React from 'react';
+
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import MachineCard from './MachineCard';
 
@@ -12,7 +13,27 @@ const MachineGrid = ({
   isUserRestricted,
   electricityShortage,
   isPendingOTP,
+  frozenUnbookMachineId,
 }) => {
+  const [tick, setTick] = useState(0);
+
+  // Trigger a re-render every second
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTick((prev) => prev + 1);
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const canUnbook = (machine) => {
+    const verifiedAt = machine.verifiedAt?.toDate?.();
+    if (!verifiedAt) return false;
+    const now = new Date();
+    const secondsSinceVerification = Math.floor((now - verifiedAt) / 1000);
+    return secondsSinceVerification >= 30;
+  };
+
   return (
     <>
       <View style={styles.sectionHeader}>
@@ -21,7 +42,7 @@ const MachineGrid = ({
           <Text style={styles.countText}>{machines.length}</Text>
         </View>
       </View>
-      
+
       <View style={styles.grid}>
         {machines.length > 0 ? (
           machines.map((machine) => {
@@ -29,7 +50,8 @@ const MachineGrid = ({
             const isUnderMaintenance = machine.underMaintenance === true;
             const isPendingOTPVerification = machine.pendingOTPVerification === true;
             const isCurrentUserBooking = (isBooked || isPendingOTPVerification) && machine.bookedBy === currentUserEmail;
-            
+            const isUnbookFrozen = isCurrentUserBooking && !canUnbook(machine);
+
             return (
               <MachineCard
                 key={machine.id}
@@ -39,10 +61,11 @@ const MachineGrid = ({
                 maintenance={isUnderMaintenance}
                 getTimeRemaining={getTimeRemaining}
                 isCurrentUserBooking={isCurrentUserBooking}
+                isUnbookFrozen={isUnbookFrozen}
                 disabled={isUserRestricted}
                 electricityShortage={electricityShortage}
                 onPress={() => !isBooked && !isUnderMaintenance && !isPendingOTPVerification && onBook(machine)}
-                onUnbook={() => isCurrentUserBooking && onUnbook(machine)}
+                onUnbook={() => isCurrentUserBooking && !isUnbookFrozen && onUnbook(machine)}
               />
             );
           })
@@ -102,3 +125,5 @@ const styles = StyleSheet.create({
 });
 
 export default MachineGrid;
+
+
