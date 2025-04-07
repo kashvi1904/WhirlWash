@@ -24,6 +24,19 @@ const MachineCard = ({
     (booked && machine.expiryTime) || (pendingOTP && machine.otpVerifyExpiryTime)
   );
 
+  // Function to check if unbook is available based on verification time
+  const canUnbook = () => {
+    const verifiedAt = machine.verifiedAt?.toDate?.();
+    if (!verifiedAt) return false;
+    
+    const now = new Date();
+    const secondsSinceVerification = Math.floor((now - verifiedAt) / 1000);
+    return secondsSinceVerification >= 30;
+  };
+
+  // Determine if unbooking is frozen (within 30s of verification)
+  const isUnbookFrozen = isCurrentUserBooking && !canUnbook();
+
   return (
     <TouchableOpacity
       style={[
@@ -94,11 +107,19 @@ const MachineCard = ({
               <Text style={styles.bookedByText}>In use</Text>
 
               {isCurrentUserBooking && (
-                <TouchableOpacity
-                  style={styles.unbookButton}
-                  onPress={onUnbook}>
-                  <Text style={styles.unbookButtonText}>Unbook</Text>
-                </TouchableOpacity>
+                <>
+                  {isUnbookFrozen ? (
+                    <View style={styles.disabledUnbookButton}>
+                      <Text style={styles.disabledUnbookText}>Wait 30s to unbook</Text>
+                    </View>
+                  ) : (
+                    <TouchableOpacity
+                      style={styles.unbookButton}
+                      onPress={onUnbook}>
+                      <Text style={styles.unbookButtonText}>Unbook</Text>
+                    </TouchableOpacity>
+                  )}
+                </>
               )}
             </View>
           )}
@@ -224,6 +245,20 @@ const styles = StyleSheet.create({
   },
   unbookButtonText: {
     color: 'white',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  disabledUnbookButton: {
+    marginTop: 8,
+    backgroundColor: '#E0E0E0',
+    paddingVertical: 5,
+    paddingHorizontal: 15,
+    borderRadius: 5,
+    borderWidth: 1,
+    borderColor: '#BDBDBD',
+  },
+  disabledUnbookText: {
+    color: '#757575',
     fontSize: 12,
     fontWeight: 'bold',
   },
