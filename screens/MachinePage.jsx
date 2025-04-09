@@ -3,12 +3,10 @@ import {
   ScrollView,
   StyleSheet,
   Alert,
-  SafeAreaView,
   StatusBar,
   View,
 } from 'react-native';
 import auth from '@react-native-firebase/auth';
-
 import useMachines from '../hooks/useMachines';
 import useUserStatus from '../hooks/useUserStatus';
 import useElectricityStatus from '../hooks/useElectricityStatus';
@@ -20,6 +18,7 @@ import LoadingIndicator from '../components/common/LoadingIndicator';
 import machineService from '../services/machineService';
 import {getTimeRemaining, hasTimeExpired} from '../utils/timeUtils';
 import SectionHeader from '../components/SectionHeader';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const checkingMachines = {};
 
@@ -213,7 +212,18 @@ const MachinePage = () => {
       safeRefreshMachines();
     } catch (error) {
       console.error('Error booking machine:', error);
-      Alert.alert('Error', 'Failed to book machine.');
+      // Alert.alert('Error', 'Failed to book machine.');
+      // Check for the specific race condition error
+      if (
+        error.message &&
+        error.message.includes('just booked by someone else')
+      ) {
+        Alert.alert('Machine Unavailable', error.message, [
+          {text: 'OK', onPress: () => safeRefreshMachines()},
+        ]);
+      } else {
+        Alert.alert('Error', 'Failed to book machine.');
+      }
     }
   };
 
@@ -245,22 +255,22 @@ const MachinePage = () => {
       Alert.alert(
         'Cannot Unbook',
         'Verification time is missing. Please try again later or contact support.',
-        [{ text: 'OK' }],
-        { cancelable: true }
+        [{text: 'OK'}],
+        {cancelable: true},
       );
       return;
     }
-    
+
     const now = new Date();
     const secondsSinceVerification = Math.floor((now - verifiedAt) / 1000);
-    
+
     if (isNaN(secondsSinceVerification) || secondsSinceVerification < 30) {
       const remaining = Math.max(1, Math.ceil(30 - secondsSinceVerification));
       Alert.alert(
         'Unbooking Not Allowed Yet',
         `You can only unbook after ${remaining} more seconds.`,
-        [{ text: 'OK' }],
-        { cancelable: true }
+        [{text: 'OK'}],
+        {cancelable: true},
       );
       return;
     }

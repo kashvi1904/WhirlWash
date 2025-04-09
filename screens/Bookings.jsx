@@ -4,7 +4,6 @@ import {
   StyleSheet,
   ScrollView,
   ActivityIndicator,
-  SafeAreaView,
   Platform,
   StatusBar,
   Alert,
@@ -17,6 +16,7 @@ import SectionHeader from '../components/SectionHeader';
 import useBookings from '../hooks/useBookings';
 import useUsageHistory from '../hooks/useUsageHistory';
 import { formatDate, formatTimeRemaining } from '../utils/dateFormatter';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const Bookings = ({ navigation }) => {
   const {
