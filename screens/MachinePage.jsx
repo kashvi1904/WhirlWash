@@ -7,10 +7,6 @@ import {
   View,
 } from 'react-native';
 import auth from '@react-native-firebase/auth';
-<<<<<<< HEAD
-=======
-
->>>>>>> a8f257be174aebbbaa18cfe08216c57b2e4e9f18
 import useMachines from '../hooks/useMachines';
 import useUserStatus from '../hooks/useUserStatus';
 import useElectricityStatus from '../hooks/useElectricityStatus';
