@@ -381,6 +381,8 @@ const MachinePage = () => {
       </ScrollView>
     </SafeAreaView>
   );
+
+  
 };
 
 const styles = StyleSheet.create({
